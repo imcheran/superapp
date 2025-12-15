@@ -1,5 +1,12 @@
 import { GoogleGenAI } from "@google/genai";
 
+// Fix for TS2580: Cannot find name 'process' in Vite environment
+declare const process: {
+  env: {
+    API_KEY: string;
+  }
+};
+
 const apiKey = process.env.API_KEY || '';
 const ai = new GoogleGenAI({ apiKey });
 

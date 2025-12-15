@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User } from '../types';
-import { Brain, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 interface AuthProps {
   onLogin: (user: User) => void;
@@ -22,19 +22,12 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   return (
     <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden animate-fade-in">
-        <div className="p-8 bg-indigo-600 text-center">
-          <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-full flex items-center justify-center mx-auto mb-4">
-            <Brain className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold text-white mb-2">OmniLife</h1>
-          <p className="text-indigo-100">Bio-Digital Ecosystem</p>
-        </div>
         
-        <div className="p-8">
+        <div className="p-8 pt-10">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-slate-700 mb-2">
-                Identify Yourself
+                Enter your name here
               </label>
               <input
                 id="username"
@@ -42,7 +35,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all"
-                placeholder="Enter your username"
+                placeholder="Enter your name"
                 autoFocus
                 required
               />

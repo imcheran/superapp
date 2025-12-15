@@ -172,8 +172,8 @@ export interface NoteItem {
 export interface Note {
   id: string;
   title: string;
-  content: string; // Used if type is 'text'
-  items: NoteItem[]; // Used if type is 'list'
+  content?: string; // Used if type is 'text'
+  items?: NoteItem[]; // Used if type is 'list'
   type: 'text' | 'list';
   color: string;
   isPinned: boolean;
