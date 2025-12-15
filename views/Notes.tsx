@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Note, NoteItem, UserSettings } from '../types';
 import { Plus, X, Pin, Palette, Image as ImageIcon, CheckSquare, MoreVertical, Archive, Trash2, Lock, Lightbulb, RotateCcw, ShieldCheck, Search, Tag, Book, Grid, List } from 'lucide-react';
@@ -255,6 +256,7 @@ const Notes: React.FC<NotesProps> = ({ notes, onUpdate, settings, onUpdateSettin
   // --- Checkbox Logic ---
 
   const toggleItem = (note: Note, itemId: string) => {
+      if (!note.items) return;
       const newItems = note.items.map(item => {
           if (item.id === itemId) return { ...item, done: !item.done };
           return item;
@@ -791,12 +793,12 @@ const Notes: React.FC<NotesProps> = ({ notes, onUpdate, settings, onUpdateSettin
                             />
                         ) : (
                             <div className="space-y-2">
-                                {editingNote.items.map((item, idx) => (
+                                {(editingNote.items || []).map((item, idx) => (
                                     <div key={item.id} className="flex items-center gap-3">
                                         <button 
                                             onClick={() => {
-                                                const newItems = [...editingNote.items];
-                                                newItems[idx].done = !newItems[idx].done;
+                                                const newItems = [...(editingNote.items || [])];
+                                                newItems[idx] = { ...newItems[idx], done: !newItems[idx].done };
                                                 setEditingNote({...editingNote, items: newItems});
                                             }}
                                             className={`w-5 h-5 border rounded flex items-center justify-center ${item.done ? 'bg-slate-500 border-slate-500 text-white' : 'border-slate-400'}`}
@@ -806,13 +808,13 @@ const Notes: React.FC<NotesProps> = ({ notes, onUpdate, settings, onUpdateSettin
                                         <input 
                                             value={item.text}
                                             onChange={e => {
-                                                const newItems = [...editingNote.items];
-                                                newItems[idx].text = e.target.value;
+                                                const newItems = [...(editingNote.items || [])];
+                                                newItems[idx] = { ...newItems[idx], text: e.target.value };
                                                 setEditingNote({...editingNote, items: newItems});
                                             }}
                                             className={`flex-1 bg-transparent outline-none ${item.done ? 'line-through text-slate-500' : ''}`}
                                         />
-                                        <button onClick={() => setEditingNote({...editingNote, items: editingNote.items.filter(i => i.id !== item.id)})}>
+                                        <button onClick={() => setEditingNote({...editingNote, items: (editingNote.items || []).filter(i => i.id !== item.id)})}>
                                             <X size={16} className="text-slate-400 hover:text-rose-500" />
                                         </button>
                                     </div>
