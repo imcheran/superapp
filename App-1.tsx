@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './views/Dashboard';
@@ -139,23 +140,31 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ user, onLogout }) =
         return { 
             transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [],
             bills: Array.isArray(parsed.bills) ? parsed.bills : [],
-            expenses: Array.isArray(parsed.expenses) ? parsed.expenses : [], 
             debts: Array.isArray(parsed.debts) ? parsed.debts : [], 
-            categories: Array.isArray(parsed.categories) ? parsed.categories : ["Food", "Travel", "Rent", "Groceries", "Entertainment"],
+            assets: Array.isArray(parsed.assets) ? parsed.assets : [],
+            categories: Array.isArray(parsed.categories) ? parsed.categories : [
+                { name: 'Food', emoji: '🍔', budgetLimit: 5000 },
+                { name: 'Transport', emoji: '🚕', budgetLimit: 2000 },
+                { name: 'Shopping', emoji: '🛍️', budgetLimit: 3000 },
+                { name: 'Bills', emoji: '🧾', budgetLimit: 4000 }
+            ],
             monthlyBudget: typeof parsed.monthlyBudget === 'number' ? parsed.monthlyBudget : 10000,
             walletBalance: typeof parsed.walletBalance === 'number' ? parsed.walletBalance : 50000,
-            fincoins: typeof parsed.fincoins === 'number' ? parsed.fincoins : 0
         };
       } catch (e) {
         return { 
             transactions: [],
             bills: [],
-            expenses: [], 
             debts: [], 
-            categories: ["Food", "Travel", "Rent", "Groceries", "Entertainment"],
+            assets: [],
+            categories: [
+                { name: 'Food', emoji: '🍔', budgetLimit: 5000 },
+                { name: 'Transport', emoji: '🚕', budgetLimit: 2000 },
+                { name: 'Shopping', emoji: '🛍️', budgetLimit: 3000 },
+                { name: 'Bills', emoji: '🧾', budgetLimit: 4000 }
+            ],
             monthlyBudget: 10000,
             walletBalance: 50000,
-            fincoins: 0
         };
       }
   });
@@ -286,7 +295,7 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ user, onLogout }) =
   const renderContent = () => {
     switch (currentView) {
       case ViewState.DASHBOARD:
-        return <Dashboard habits={habits} data={trackingData} settings={settings} logs={dailyLogs} />;
+        return <Dashboard habits={habits} data={trackingData} />;
       case ViewState.MONTHLY_DASHBOARD:
         return <MonthlyDashboard habits={habits} data={trackingData} />;
       case ViewState.TRACKER:
@@ -310,7 +319,7 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ user, onLogout }) =
       case ViewState.AI_COACH:
         return <AIAdvisor habits={habits} data={trackingData} dailyLogs={dailyLogs} />;
       default:
-        return <Dashboard habits={habits} data={trackingData} settings={settings} logs={dailyLogs} />;
+        return <Dashboard habits={habits} data={trackingData} />;
     }
   };
 

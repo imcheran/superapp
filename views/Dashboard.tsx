@@ -7,6 +7,8 @@ import { ResponsiveContainer, ComposedChart, Area, Line, XAxis, YAxis, Tooltip, 
 interface DashboardProps {
   habits: Habit[];
   data: TrackingData;
+  settings?: any;
+  logs?: any;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ habits, data }) => {
@@ -176,7 +178,7 @@ const Dashboard: React.FC<DashboardProps> = ({ habits, data }) => {
                           axisLine={false} 
                           tickLine={false} 
                           tick={{fontSize: 10, fontWeight: 'bold', fill: '#6366f1'}}
-                          domain={[0, (data) => Math.max(data, habits.length || 5)]}
+                          domain={[0, (data: number) => Math.max(data, habits.length || 5)]}
                       />
                       {/* Right Y-Axis for Percentage */}
                       <YAxis 

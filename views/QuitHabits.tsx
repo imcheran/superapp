@@ -34,7 +34,7 @@ const QuitHeatmap: React.FC<{ habit: Habit, currentDate: Date, scope: HeatmapSco
   const paddingCount = startDay;
   const padding = Array.from({ length: paddingCount }).fill(null);
   
-  const dates = [];
+  const dates: Date[] = [];
   let d = new Date(startDate);
   d.setHours(0,0,0,0);
   const end = new Date(endDate);
