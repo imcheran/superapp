@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Habit, RelapseRecord } from '../types';
 import { Ban, RefreshCw, Wind, History, ChevronUp, Edit2, X, AlertTriangle, Clock, Zap, BarChart2, IndianRupee, Trophy, CheckCircle2 } from 'lucide-react';

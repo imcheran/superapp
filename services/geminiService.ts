@@ -1,8 +1,12 @@
-
-import { GoogleGenAI } from "@google/genai";
+// import { GoogleGenAI } from "@google/genai";
 
 // AI Service implemented using Google GenAI SDK for real-time bio-data analysis
 export const getAIAnalysis = async (context: string, prompt: string): Promise<string> => {
+  // Temporary stub to bypass build error until dependency is fixed
+  console.log("AI Analysis requested:", context, prompt);
+  return "AI Coach is currently unavailable (Dependency Update Required).";
+  
+  /*
   // Always use a named parameter to initialize GoogleGenAI with the API Key
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -23,4 +27,5 @@ export const getAIAnalysis = async (context: string, prompt: string): Promise<st
     console.error("Gemini API Error:", error);
     return "The AI Coach is currently unavailable. Please check your network connection or API configuration.";
   }
+  */
 };

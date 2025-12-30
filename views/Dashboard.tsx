@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Habit, TrackingData } from '../types';
 import { TrendingUp, Trophy, BarChart2, ChevronLeft, ChevronRight, Star, AlertCircle, ArrowUpRight, ArrowDownRight, Activity } from 'lucide-react';
