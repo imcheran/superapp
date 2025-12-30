@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { ViewState } from '../types';
-import { LayoutDashboard, Calendar, CheckSquare, Brain, BookOpen, Settings, IndianRupee, LogOut, X, Ban, StickyNote, BarChart2 } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Brain, Settings, IndianRupee, LogOut, X, Ban } from 'lucide-react';
 
 interface SidebarProps {
   currentView: ViewState;
@@ -16,13 +16,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, isOpen, setIsOp
   const menuItems = [
     { view: ViewState.DASHBOARD, label: 'Dashboard', icon: LayoutDashboard },
     { view: ViewState.TRACKER, label: 'Habit Tracker', icon: CheckSquare },
-    { view: ViewState.ANALYTICS, label: 'Statistics', icon: BarChart2 }, // Changed label for clarity
     { view: ViewState.QUIT_HABITS, label: 'Quit Habits', icon: Ban },
-    { view: ViewState.NOTES, label: 'Notes', icon: StickyNote }, // New Item
-    { view: ViewState.MONTHLY_DASHBOARD, label: 'Monthly View', icon: Calendar },
-    { view: ViewState.JOURNAL, label: 'Daily Journal', icon: BookOpen },
     { view: ViewState.FINANCE, label: 'Finance', icon: IndianRupee },
-    { view: ViewState.AI_COACH, label: 'AI Advisor', icon: Brain },
     { view: ViewState.SETTINGS, label: 'Settings', icon: Settings },
   ];
 
@@ -82,7 +77,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, isOpen, setIsOp
             <span className="font-medium">Sign Out</span>
           </button>
           <div className="mt-4 px-4 text-xs text-slate-600 text-center">
-             v1.2.0 • {username}
+             v1.2.5 • {username}
           </div>
         </div>
       </aside>

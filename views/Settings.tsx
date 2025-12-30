@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Habit, UserSettings } from '../types';
 import { HABIT_COLORS } from '../constants';
-import { Trash2, Plus, Zap, X, ChevronDown, ChevronUp, Edit2, Minus, Ban, CheckSquare, RefreshCw, IndianRupee } from 'lucide-react';
+import { Trash2, Plus, X, ChevronDown, ChevronUp, Edit2, Minus, Ban, CheckSquare, RefreshCw, IndianRupee } from 'lucide-react';
 
 interface SettingsProps {
   habits: Habit[];
@@ -25,12 +25,6 @@ const Settings: React.FC<SettingsProps> = ({ habits, onUpdateHabits, settings, o
   };
   const [formData, setFormData] = useState<Habit>(defaultHabit);
   const [showAdvanced, setShowAdvanced] = useState(true);
-
-  // --- Actions ---
-
-  const handleDeepWorkChange = (val: string) => {
-    onUpdateSettings({ ...settings, deepWorkInterval: parseInt(val) });
-  };
 
   // --- Habit CRUD ---
 
@@ -126,29 +120,6 @@ const Settings: React.FC<SettingsProps> = ({ habits, onUpdateHabits, settings, o
                     </div>
                 ))}
                 {habits.length === 0 && <p className="p-8 text-center text-slate-400 italic">No habits configured yet.</p>}
-            </div>
-        </div>
-
-        {/* GLOBAL SETTINGS GRID */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            {/* Deep Work */}
-            <div className="space-y-4">
-                 <h3 className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    <Zap size={14} /> Deep Work Config
-                </h3>
-                <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm h-[132px] flex flex-col justify-center">
-                    <div className="flex justify-between items-center mb-4">
-                        <span className="font-bold text-slate-700">Focus Block</span>
-                        <span className="font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg text-sm">{settings.deepWorkInterval}m</span>
-                    </div>
-                    <input 
-                        type="range" min="15" max="120" step="5" 
-                        value={settings.deepWorkInterval}
-                        onChange={(e) => handleDeepWorkChange(e.target.value)}
-                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-                    />
-                </div>
             </div>
         </div>
 
