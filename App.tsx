@@ -14,9 +14,10 @@ import Notes from './views/Notes';
 // Import the new AuthComponent
 import AuthComponent from './components/AuthComponent';
 import { auth } from './services/firebase'; // Import auth to get current user data
-import { ViewState, Habit, TrackingData, DailyLogData, UserSettings, FinanceData, User, Note } from './types';
+import { ViewState, Habit, TrackingData, DailyLogData, UserSettings, FinanceData, User, Note, UserData } from './types';
 import { DEFAULT_HABITS } from './constants';
-import { Battery, BatteryCharging, Heart, Shield, Menu, AlertTriangle } from 'lucide-react';
+import { Battery, BatteryCharging, Heart, Shield, Menu, AlertTriangle, Cloud, CloudOff } from 'lucide-react';
+import { useCloudStorage } from './hooks/useCloudStorage';
 
 interface ErrorBoundaryProps {
   children?: React.ReactNode;
@@ -91,6 +92,9 @@ interface AuthenticatedAppProps {
 const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ user, onLogout }) => {
   const [currentView, setCurrentView] = useState<ViewState>(ViewState.DASHBOARD);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const { saveToCloud, loadFromCloud } = useCloudStorage<UserData>();
+  const [isCloudSynced, setIsCloudSynced] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   
   // Storage Keys with Username Prefix
   const KEYS = {
@@ -196,7 +200,50 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ user, onLogout }) =
     }
   });
 
-  // Persistence Effects
+  // --- Cloud Synchronization ---
+  
+  // 1. Load from Cloud on Mount
+  useEffect(() => {
+    const fetchCloudData = async () => {
+      setIsSyncing(true);
+      const cloudData = await loadFromCloud();
+      if (cloudData) {
+        if (cloudData.habits) setHabits(cloudData.habits);
+        if (cloudData.trackingData) setTrackingData(cloudData.trackingData);
+        if (cloudData.dailyLogs) setDailyLogs(cloudData.dailyLogs);
+        if (cloudData.financeData) setFinanceData(cloudData.financeData);
+        if (cloudData.settings) setSettings(cloudData.settings);
+        if (cloudData.notes) setNotes(cloudData.notes);
+      }
+      setIsCloudSynced(true); // Enable auto-save only after initial load attempt
+      setIsSyncing(false);
+    };
+    fetchCloudData();
+  }, []);
+
+  // 2. Auto-Save to Cloud on Change
+  useEffect(() => {
+    if (!isCloudSynced) return;
+
+    const saveData = async () => {
+        setIsSyncing(true);
+        await saveToCloud({
+            habits,
+            trackingData,
+            dailyLogs,
+            financeData,
+            settings,
+            notes
+        });
+        setIsSyncing(false);
+    };
+
+    const timer = setTimeout(saveData, 3000); // 3s debounce
+    return () => clearTimeout(timer);
+  }, [habits, trackingData, dailyLogs, financeData, settings, notes, isCloudSynced]);
+
+
+  // Persistence Effects (Local Storage)
   useEffect(() => localStorage.setItem(KEYS.HABITS, JSON.stringify(habits)), [habits, KEYS.HABITS]);
   useEffect(() => localStorage.setItem(KEYS.DATA, JSON.stringify(trackingData)), [trackingData, KEYS.DATA]);
   useEffect(() => localStorage.setItem(KEYS.LOGS, JSON.stringify(dailyLogs)), [dailyLogs, KEYS.LOGS]);
@@ -316,6 +363,18 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ user, onLogout }) =
                      </h2>
                      {settings.mode === 'HERO' && (
                          <span className="hidden sm:inline px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] font-bold uppercase rounded-md tracking-wider whitespace-nowrap">Hero Mode</span>
+                     )}
+                     
+                     {/* Cloud Sync Status */}
+                     {isCloudSynced ? (
+                         <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-100 text-slate-400">
+                            <Cloud size={14} className={isSyncing ? "text-indigo-500 animate-pulse" : "text-emerald-500"} />
+                            <span className="text-[10px] font-bold uppercase hidden md:inline">{isSyncing ? 'Syncing...' : 'Saved'}</span>
+                         </div>
+                     ) : (
+                         <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-100 text-slate-400" title="Loading from Cloud...">
+                            <CloudOff size={14} className="text-slate-400" />
+                         </div>
                      )}
                  </div>
                  <div className="md:hidden w-8 h-8 bg-slate-900 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg border-2 border-slate-100">

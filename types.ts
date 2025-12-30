@@ -218,3 +218,12 @@ export interface Note {
   labels?: string[];
   createdAt: string;
 }
+
+export interface UserData {
+  habits: Habit[];
+  trackingData: TrackingData;
+  dailyLogs: DailyLogData;
+  financeData: FinanceData;
+  settings: UserSettings;
+  notes: Note[];
+}
