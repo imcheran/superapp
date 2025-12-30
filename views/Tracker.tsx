@@ -54,25 +54,44 @@ const HabitHeatmap: React.FC<{ habit: Habit, data: TrackingData, currentDate: Da
   const stats = useMemo(() => {
     let total = 0;
     let currentStreak = 0;
-    let maxStreak = 0;
-    let tempStreak = 0;
     
-    const todayStr = toLocalISO(new Date());
-
+    // 1. Calculate Total Completions in the visible scope
     dates.forEach(date => {
         const ds = toLocalISO(date);
         if (data[ds]?.includes(habit.id)) {
             total++;
-            tempStreak++;
-            maxStreak = Math.max(maxStreak, tempStreak);
-        } else if (ds <= todayStr) {
-            tempStreak = 0;
         }
     });
 
-    // Current streak from today backwards
-    let checkDate = new Date();
-    checkDate.setHours(0,0,0,0);
+    // 2. Calculate Live Streak (Independent of scope, looks at ALL time)
+    // Logic: If today is done, count from today back. 
+    // If today is NOT done, but yesterday IS, count from yesterday back (so streak doesn't show 0).
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const todayStr = toLocalISO(today);
+
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = toLocalISO(yesterday);
+
+    let checkDate = new Date(today); // Default start checking from today
+
+    const isTodayDone = data[todayStr]?.includes(habit.id);
+    const isYesterdayDone = data[yesterdayStr]?.includes(habit.id);
+
+    if (isTodayDone) {
+        // Streak is active including today
+        checkDate = new Date(today);
+    } else if (isYesterdayDone) {
+        // Streak is active up to yesterday
+        checkDate = new Date(yesterday);
+    } else {
+        // Streak broken
+        currentStreak = 0;
+        return { total, currentStreak };
+    }
+
+    // Count backwards
     while (true) {
         const cds = toLocalISO(checkDate);
         if (data[cds]?.includes(habit.id)) {
@@ -83,7 +102,7 @@ const HabitHeatmap: React.FC<{ habit: Habit, data: TrackingData, currentDate: Da
         }
     }
 
-    return { total, currentStreak, maxStreak };
+    return { total, currentStreak };
   }, [data, habit.id, dates]);
 
   // Render Classes & Dimensions
@@ -99,7 +118,7 @@ const HabitHeatmap: React.FC<{ habit: Habit, data: TrackingData, currentDate: Da
   }
 
   return (
-    <div className="flex flex-col md:flex-row gap-6 p-5 bg-white rounded-xl border border-slate-100 hover:border-slate-200 transition-colors shadow-sm">
+    <div className="flex flex-col md:flex-row gap-6 p-5 bg-white rounded-xl border border-slate-200 hover:border-slate-300 transition-colors shadow-sm">
         <div className="flex-1 space-y-4">
             <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
@@ -131,10 +150,10 @@ const HabitHeatmap: React.FC<{ habit: Habit, data: TrackingData, currentDate: Da
                                 <div 
                                     key={dateStr}
                                     title={`${date.toDateString()}`}
-                                    className={`${cellClass} transition-all duration-300 ${isDone ? 'scale-100 shadow-sm' : 'bg-slate-100 scale-90'}`}
+                                    className={`${cellClass} transition-all duration-300 ${isDone ? 'scale-100 shadow-sm' : 'bg-slate-200 scale-90'}`}
                                     style={{ 
                                         backgroundColor: isDone ? habit.color : undefined,
-                                        opacity: isFuture ? 0.2 : 1 
+                                        opacity: isFuture ? 0.3 : 1 
                                     }}
                                 />
                             );
@@ -145,7 +164,7 @@ const HabitHeatmap: React.FC<{ habit: Habit, data: TrackingData, currentDate: Da
         </div>
 
         {/* Counts / Stats Column */}
-        <div className="flex flex-col justify-center gap-2 min-w-[130px] md:border-l md:border-slate-50 md:pl-6">
+        <div className="flex flex-col justify-center gap-2 min-w-[130px] md:border-l md:border-slate-100 md:pl-6">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                     <CheckCircle2 size={14} className="text-emerald-500" />
@@ -156,16 +175,9 @@ const HabitHeatmap: React.FC<{ habit: Habit, data: TrackingData, currentDate: Da
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                     <Flame size={14} className="text-orange-500" />
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Streak</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Live Streak</span>
                 </div>
                 <span className="text-sm font-black text-orange-600">{stats.currentStreak}</span>
-            </div>
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                    <Trophy size={14} className="text-amber-500" />
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Best</span>
-                </div>
-                <span className="text-sm font-black text-amber-600">{stats.maxStreak}</span>
             </div>
         </div>
     </div>
@@ -185,8 +197,8 @@ const Tracker: React.FC<TrackerProps> = ({ habits, data, onToggle }) => {
 
   return (
     <div className="space-y-8 animate-fade-in pb-10">
-      <div className="bg-white rounded-xl border border-slate-100 shadow-sm flex flex-col overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-white z-10">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+        <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-white z-10">
             <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                     <h2 className="text-xl font-bold text-slate-800">{monthName}</h2>
@@ -214,12 +226,12 @@ const Tracker: React.FC<TrackerProps> = ({ habits, data, onToggle }) => {
             <div className="min-w-max">
                 <table className="w-full border-collapse">
                     <thead>
-                        <tr className="bg-slate-50/50">
-                            <th className="sticky left-0 z-20 bg-slate-50 border-r border-slate-100 p-4 text-left min-w-[200px] shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Master Habit List</span>
+                        <tr className="bg-slate-50/80">
+                            <th className="sticky left-0 z-20 bg-slate-50 border-r border-slate-200 p-4 text-left min-w-[200px] shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
+                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Master Habit List</span>
                             </th>
                             {days.map(day => (
-                                <th key={day} className="p-2 min-w-[36px] text-center border-b border-slate-100">
+                                <th key={day} className="p-2 min-w-[36px] text-center border-b border-slate-200">
                                     <div className="flex flex-col items-center">
                                         <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
                                             {new Date(year, month, day).toLocaleDateString('en-US', { weekday: 'short' }).substring(0, 1)}
@@ -232,10 +244,10 @@ const Tracker: React.FC<TrackerProps> = ({ habits, data, onToggle }) => {
                             ))}
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-200">
                         {habits.map(habit => (
-                            <tr key={habit.id} className="hover:bg-slate-50/30 transition-colors">
-                                <td className="sticky left-0 z-20 bg-white border-r border-slate-100 p-4 shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
+                            <tr key={habit.id} className="hover:bg-slate-50/50 transition-colors">
+                                <td className="sticky left-0 z-20 bg-white border-r border-slate-200 p-4 shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
                                     <div className="flex items-center gap-3">
                                         <div className="w-2 h-2 rounded-full" style={{backgroundColor: habit.color}}></div>
                                         <div>
@@ -250,14 +262,14 @@ const Tracker: React.FC<TrackerProps> = ({ habits, data, onToggle }) => {
                                     const isToday = new Date().toISOString().split('T')[0] === dateStr;
                                     
                                     return (
-                                        <td key={day} className="p-1 border-slate-100">
+                                        <td key={day} className="p-1 border-slate-200/50">
                                             <button
                                                 onClick={() => onToggle(habit.id, dateStr)}
                                                 className={`
                                                     w-8 h-8 rounded-lg mx-auto flex items-center justify-center transition-all duration-300
                                                     ${isDone 
                                                         ? 'text-white scale-100 shadow-md' 
-                                                        : isToday ? 'bg-slate-100 border-2 border-slate-200' : 'hover:bg-slate-100'}
+                                                        : isToday ? 'bg-slate-200 border-2 border-slate-300' : 'bg-slate-100 hover:bg-slate-200'}
                                                 `}
                                                 style={{ backgroundColor: isDone ? habit.color : undefined }}
                                             >

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Habit, UserSettings } from '../types';
 import { HABIT_COLORS } from '../constants';
-import { Trash2, Plus, X, ChevronDown, ChevronUp, Edit2, Minus, Ban, CheckSquare, RefreshCw, IndianRupee } from 'lucide-react';
+import { Trash2, Plus, X, ChevronDown, ChevronUp, Edit2, Ban, CheckSquare, RefreshCw, Target } from 'lucide-react';
 
 interface SettingsProps {
   habits: Habit[];
@@ -19,7 +19,7 @@ const Settings: React.FC<SettingsProps> = ({ habits, onUpdateHabits, settings, o
   // New Habit Form State
   const defaultHabit: Habit = {
       id: '', name: '', description: '', category: 'Health',
-      goalFrequency: 7, targetConsistency: 100, color: HABIT_COLORS[0],
+      goalFrequency: 7, targetConsistency: 85, color: HABIT_COLORS[0],
       streakGoal: 0, trackingType: 'BOOLEAN', dailyTarget: 1, unit: 'Day',
       type: 'BUILD', quitDate: new Date().toISOString(), quitCostPerDay: 0
   };
@@ -67,12 +67,6 @@ const Settings: React.FC<SettingsProps> = ({ habits, onUpdateHabits, settings, o
       }
   };
 
-  const adjustDailyTarget = (delta: number) => {
-      const current = formData.dailyTarget || 1;
-      const newVal = Math.max(1, current + delta);
-      setFormData({...formData, dailyTarget: newVal});
-  };
-
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-fade-in font-sans pb-20 relative">
         
@@ -103,7 +97,7 @@ const Settings: React.FC<SettingsProps> = ({ habits, onUpdateHabits, settings, o
                                 <p className="text-xs text-slate-400">
                                     {habit.type === 'QUIT' 
                                         ? 'Abstinence Tracker' 
-                                        : habit.trackingType === 'COUNT' ? `Target: ${habit.dailyTarget} ${habit.unit || 'units'}` : 'Daily Completion'
+                                        : `Goal: ${habit.targetConsistency}% Consistency`
                                     } 
                                     • {habit.category}
                                 </p>
@@ -233,70 +227,28 @@ const Settings: React.FC<SettingsProps> = ({ habits, onUpdateHabits, settings, o
                                 {/* Conditional Fields based on Type */}
                                 {formData.type !== 'QUIT' ? (
                                     <>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-1">
-                                                <label className="text-xs font-bold text-slate-500 uppercase ml-1">Streak Goal</label>
-                                                <div className="bg-[#1E1E1E] px-4 py-3 rounded-xl border border-white/10 flex items-center justify-between group hover:border-white/20 transition-colors">
-                                                    <span className="text-sm text-slate-300">{formData.streakGoal ? `${formData.streakGoal} Days` : 'None'}</span>
-                                                    <input 
-                                                        type="number" 
-                                                        value={formData.streakGoal}
-                                                        onChange={e => setFormData({...formData, streakGoal: parseInt(e.target.value)})}
-                                                        className="w-8 bg-transparent text-right outline-none text-sm text-slate-400 focus:text-white"
-                                                        min="0"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-xs font-bold text-slate-500 uppercase ml-1">Reminder</label>
-                                                <div className="bg-[#1E1E1E] px-4 py-3 rounded-xl border border-white/10 flex items-center justify-between cursor-not-allowed opacity-50">
-                                                    <span className="text-sm text-slate-300">0 Active</span>
-                                                    <ChevronDown size={16} className="text-slate-500" />
-                                                </div>
-                                            </div>
-                                        </div>
-
                                         <div className="space-y-3 pt-2">
-                                            <label className="text-xs font-bold text-slate-500 uppercase ml-1">Tracking Method</label>
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <button 
-                                                    onClick={() => setFormData({...formData, trackingType: 'BOOLEAN'})}
-                                                    className={`py-3 rounded-xl text-sm font-bold border transition-all ${formData.trackingType === 'BOOLEAN' ? 'bg-slate-700 border-slate-500 text-white shadow-sm' : 'bg-[#1E1E1E] border-white/10 text-slate-400 hover:bg-[#252525]'}`}
-                                                >
-                                                    Step By Step
-                                                </button>
-                                                <button 
-                                                    onClick={() => setFormData({...formData, trackingType: 'COUNT'})}
-                                                    className={`py-3 rounded-xl text-sm font-bold border transition-all ${formData.trackingType === 'COUNT' ? 'bg-slate-700 border-slate-500 text-white shadow-sm' : 'bg-[#1E1E1E] border-white/10 text-slate-400 hover:bg-[#252525]'}`}
-                                                >
-                                                    Custom Value
-                                                </button>
-                                            </div>
-                                            
-                                            {/* Custom Value Target Fields */}
-                                            {formData.trackingType === 'COUNT' && (
-                                                <div className="space-y-2 animate-fade-in">
-                                                     <label className="text-xs font-bold text-slate-500 uppercase ml-1">Completions Per Day</label>
-                                                     <div className="flex gap-2">
-                                                        <div className="flex-1 bg-[#1E1E1E] rounded-xl border border-white/10 flex items-center px-2">
-                                                            <input 
-                                                                type="number"
-                                                                value={formData.dailyTarget}
-                                                                onChange={e => setFormData({...formData, dailyTarget: parseFloat(e.target.value)})}
-                                                                className="bg-transparent text-white px-2 py-3 outline-none w-full text-center font-bold"
-                                                                min="1"
-                                                            />
-                                                            <span className="text-slate-500 text-sm font-medium pr-2 whitespace-nowrap">/ {formData.unit || 'Day'}</span>
-                                                        </div>
-                                                        <button onClick={() => adjustDailyTarget(-1)} className="w-12 bg-[#1E1E1E] rounded-xl border border-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-[#252525]">
-                                                            <Minus size={20} />
-                                                        </button>
-                                                        <button onClick={() => adjustDailyTarget(1)} className="w-12 bg-[#1E1E1E] rounded-xl border border-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-[#252525]">
-                                                            <Plus size={20} />
-                                                        </button>
-                                                     </div>
+                                            <label className="text-xs font-bold text-slate-500 uppercase ml-1 flex items-center gap-2">
+                                                <Target size={14} /> Benchmark Goal (%)
+                                            </label>
+                                            <div className="bg-[#1E1E1E] p-4 rounded-xl border border-white/10">
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <span className="text-sm text-slate-400">Target Consistency</span>
+                                                    <span className="text-xl font-bold text-indigo-400">{formData.targetConsistency || 85}%</span>
                                                 </div>
-                                            )}
+                                                <input 
+                                                    type="range" 
+                                                    min="10" 
+                                                    max="100" 
+                                                    step="5"
+                                                    value={formData.targetConsistency || 85}
+                                                    onChange={e => setFormData({...formData, targetConsistency: parseInt(e.target.value)})}
+                                                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                                                />
+                                                <p className="text-[10px] text-slate-500 mt-2">
+                                                    This goal reflects in the Master Performance Hub.
+                                                </p>
+                                            </div>
                                         </div>
                                     </>
                                 ) : (
@@ -311,22 +263,6 @@ const Settings: React.FC<SettingsProps> = ({ habits, onUpdateHabits, settings, o
                                                     value={formData.quitDate ? formData.quitDate.substring(0, 16) : new Date().toISOString().substring(0, 16)}
                                                     onChange={e => setFormData({...formData, quitDate: new Date(e.target.value).toISOString()})}
                                                     className="w-full bg-[#121212] border border-white/10 rounded-lg px-3 py-2 text-white text-sm"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-start gap-3">
-                                            <IndianRupee className="text-emerald-500 mt-1" size={20} />
-                                            <div className="w-full">
-                                                <h4 className="text-sm font-bold text-white">Financial Impact</h4>
-                                                <p className="text-xs text-slate-400 mb-2">Daily cost of this habit (e.g., cigarette pack cost).</p>
-                                                <input 
-                                                    type="number" 
-                                                    min="0"
-                                                    value={formData.quitCostPerDay || 0}
-                                                    onChange={e => setFormData({...formData, quitCostPerDay: parseFloat(e.target.value)})}
-                                                    className="w-full bg-[#121212] border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-bold"
-                                                    placeholder="0.00"
                                                 />
                                             </div>
                                         </div>

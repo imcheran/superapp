@@ -112,6 +112,7 @@ export interface Debt {
 export interface FinanceCategory {
   name: string;
   emoji: string;
+  budgetLimit?: number;
 }
 
 export interface FinanceData {
@@ -122,6 +123,34 @@ export interface FinanceData {
   categories: FinanceCategory[];
   monthlyBudget: number;
   walletBalance: number; 
+}
+
+export interface CategoryBudget {
+  category: string;
+  budgetLimit: number;
+  spent: number;
+  remaining: number;
+  percentageUsed: number;
+  isOverBudget: boolean;
+}
+
+export interface ExpenseInsight {
+  category: string;
+  currentMonthSpend: number;
+  lastMonthSpend: number;
+  changePercentage: number;
+  trend: 'UP' | 'DOWN' | 'STABLE';
+  recommendation?: string;
+}
+
+export interface FinanceAnalytics {
+  totalIncome: number;
+  totalExpense: number;
+  netSavings: number;
+  savingsRate: number;
+  categoryBreakdown: { category: string; amount: number; percentage: number }[];
+  dailyAverage: number;
+  projectedMonthEnd: number;
 }
 
 export interface DailyEntry {
