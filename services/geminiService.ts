@@ -1,31 +1,18 @@
-// import { GoogleGenAI } from "@google/genai";
-
-// AI Service implemented using Google GenAI SDK for real-time bio-data analysis
+// AI Service stub - Gemini integration disabled
 export const getAIAnalysis = async (context: string, prompt: string): Promise<string> => {
-  // Temporary stub to bypass build error until dependency is fixed
-  console.log("AI Analysis requested:", context, prompt);
-  return "AI Coach is currently unavailable (Dependency Update Required).";
+  console.log("AI Analysis requested (Disabled):", context, prompt);
   
-  /*
-  // Always use a named parameter to initialize GoogleGenAI with the API Key
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // Simulate network delay
+  await new Promise(resolve => setTimeout(resolve, 1000));
 
-  try {
-    // Calling generateContent directly on ai.models as recommended
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `Context:\n${context}\n\nUser Message:\n${prompt}`,
-      config: {
-        systemInstruction: "You are Omni, a world-class Bio-Digital Coach. Your goal is to provide data-backed insights on how lifestyle factors like sleep and nutrition correlate with habit consistency and mood.",
-        temperature: 0.7,
-      },
-    });
-
-    // Extracting text output directly from the .text property as per guidelines
-    return response.text || "I was unable to analyze the data at this moment. Please provide more details or try again later.";
-  } catch (error) {
-    console.error("Gemini API Error:", error);
-    return "The AI Coach is currently unavailable. Please check your network connection or API configuration.";
-  }
-  */
+  return `
+    <strong>AI Coach Unavailable</strong>
+    <p>The AI integration is currently disabled in this build.</p>
+    <p>However, based on your logs, here are some general tips:</p>
+    <ul>
+      <li>Consistency is key. Try to stick to your sleep schedule.</li>
+      <li>Hydration affects energy levels. Aim for 3L of water daily.</li>
+      <li>Review your habits in the "Tracker" view to spot patterns manually.</li>
+    </ul>
+  `;
 };
