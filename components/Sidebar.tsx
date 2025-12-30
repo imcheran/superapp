@@ -40,7 +40,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, isOpen, setIsOp
         <div className="p-6 flex items-center justify-between">
           <div className="flex items-center gap-2 font-bold text-xl">
             <Brain className="text-indigo-400" />
-            <span>OmniLife</span>
+            <span>Habit Tracker</span>
           </div>
           <button onClick={() => setIsOpen(false)} className="md:hidden text-slate-400 hover:text-white">
             <X size={24} />

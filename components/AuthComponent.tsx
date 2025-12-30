@@ -24,7 +24,7 @@ export default function AuthComponent({ children }: PropsWithChildren) {
             <div className="w-12 h-12 bg-indigo-500/20 rounded-xl flex items-center justify-center animate-pulse">
                 <Brain className="text-indigo-500 w-6 h-6" />
             </div>
-            <p className="text-slate-500 font-bold text-sm animate-pulse">Initializing OmniLife...</p>
+            <p className="text-slate-500 font-bold text-sm animate-pulse">Initializing Habit Tracker...</p>
          </div>
       </div>
     );
@@ -39,4 +39,3 @@ export default function AuthComponent({ children }: PropsWithChildren) {
   // If authenticated, render the main App content
   return <>{children}</>;
 }
-    

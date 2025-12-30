@@ -115,14 +115,21 @@ export interface FinanceCategory {
   budgetLimit?: number;
 }
 
+export interface MonthlyBudgetConfig {
+    total: number;
+    ratios: { needs: number; wants: number; savings: number };
+    categoryLimits: Record<string, number>;
+}
+
 export interface FinanceData {
   transactions: Transaction[]; 
   bills: Bill[]; 
   debts: Debt[];
   assets: Asset[];
   categories: FinanceCategory[];
-  monthlyBudget: number;
+  monthlyBudget: number; // Global default
   walletBalance: number; 
+  budgetHistory?: Record<string, MonthlyBudgetConfig>; // Key: "YYYY-M" (e.g., "2024-5" for June, since Month is 0-indexed in JS dates usually, but we will use 0-11)
 }
 
 export interface CategoryBudget {

@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Habit, TrackingData } from '../types';
 import { Check, ChevronLeft, ChevronRight, BarChart3, Trophy, Flame, CheckCircle2 } from 'lucide-react';
@@ -52,7 +53,6 @@ const HabitHeatmap: React.FC<{ habit: Habit, data: TrackingData, currentDate: Da
 
   const stats = useMemo(() => {
     let total = 0;
-    let currentStreak = 0;
     
     // 1. Calculate Total Completions in the visible scope
     dates.forEach(date => {
@@ -62,46 +62,7 @@ const HabitHeatmap: React.FC<{ habit: Habit, data: TrackingData, currentDate: Da
         }
     });
 
-    // 2. Calculate Live Streak (Independent of scope, looks at ALL time)
-    // Logic: If today is done, count from today back. 
-    // If today is NOT done, but yesterday IS, count from yesterday back (so streak doesn't show 0).
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    const todayStr = toLocalISO(today);
-
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = toLocalISO(yesterday);
-
-    let checkDate = new Date(today); // Default start checking from today
-
-    const isTodayDone = data[todayStr]?.includes(habit.id);
-    const isYesterdayDone = data[yesterdayStr]?.includes(habit.id);
-
-    if (isTodayDone) {
-        // Streak is active including today
-        checkDate = new Date(today);
-    } else if (isYesterdayDone) {
-        // Streak is active up to yesterday
-        checkDate = new Date(yesterday);
-    } else {
-        // Streak broken
-        currentStreak = 0;
-        return { total, currentStreak };
-    }
-
-    // Count backwards
-    while (true) {
-        const cds = toLocalISO(checkDate);
-        if (data[cds]?.includes(habit.id)) {
-            currentStreak++;
-            checkDate.setDate(checkDate.getDate() - 1);
-        } else {
-            break;
-        }
-    }
-
-    return { total, currentStreak };
+    return { total };
   }, [data, habit.id, dates]);
 
   // Render Classes & Dimensions
@@ -170,13 +131,6 @@ const HabitHeatmap: React.FC<{ habit: Habit, data: TrackingData, currentDate: Da
                     <span className="text-[10px] font-bold text-slate-400 uppercase">Total Done</span>
                 </div>
                 <span className="text-sm font-black text-slate-700">{stats.total}</span>
-            </div>
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                    <Flame size={14} className="text-orange-500" />
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Live Streak</span>
-                </div>
-                <span className="text-sm font-black text-orange-600">{stats.currentStreak}</span>
             </div>
         </div>
     </div>
@@ -288,7 +242,7 @@ const Tracker: React.FC<TrackerProps> = ({ habits, data, onToggle }) => {
       <div className="space-y-4">
           <div className="flex items-center gap-2 px-2">
               <BarChart3 className="text-indigo-600" size={20} />
-              <h3 className="font-bold text-slate-800">Visual Pattern Mastery</h3>
+              <h3 className="font-bold text-slate-800">Habit Heat Map</h3>
           </div>
           <div className="grid grid-cols-1 gap-4">
               {habits.map(habit => (

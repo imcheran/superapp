@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { FinanceData, Transaction, TransactionType, CategoryBudget, ExpenseInsight, FinanceAnalytics } from '../types';
+import { FinanceData, Transaction, TransactionType, CategoryBudget, ExpenseInsight, FinanceAnalytics, MonthlyBudgetConfig } from '../types';
 import { 
     Plus, Trash2, DollarSign, Wallet, ChevronLeft, ChevronRight, 
     Calendar as CalendarIcon, BookOpen, Landmark, Eye, EyeOff,
@@ -17,7 +17,7 @@ interface FinanceProps {
 const CATEGORY_COLORS = ['#fbbf24', '#f87171', '#34d399', '#60a5fa', '#a78bfa', '#f472b6', '#22d3ee', '#fb923c'];
 
 export default function Finance({ data, onUpdate }: FinanceProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'analysis' | 'budget'>('overview');
+  const [activeTab, setActiveTab] = useState<'transactions' | 'analysis' | 'overview' | 'budget'>('transactions');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [viewScope, setViewScope] = useState<'MONTH' | 'YEAR'>('MONTH');
@@ -34,6 +34,36 @@ export default function Finance({ data, onUpdate }: FinanceProps) {
   const [note, setNote] = useState('');
   const [selectedAssetId, setSelectedAssetId] = useState(data.assets[0]?.id || '');
   const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // --- Budget Data Management ---
+  const getMonthKey = (year: number, month: number) => `${year}-${month}`;
+  
+  const currentMonthKey = getMonthKey(selectedYear, selectedMonth);
+  
+  // Retrieve budget config for the selected month, or fall back to defaults/previous
+  const currentBudgetConfig: MonthlyBudgetConfig = useMemo(() => {
+    if (data.budgetHistory && data.budgetHistory[currentMonthKey]) {
+        return data.budgetHistory[currentMonthKey];
+    }
+    // Default fallback (can be improved to carry over last month)
+    const initialCategoryLimits: Record<string, number> = {};
+    data.categories.forEach(c => {
+        if(c.budgetLimit) initialCategoryLimits[c.name] = c.budgetLimit;
+    });
+
+    return {
+        total: data.monthlyBudget,
+        ratios: { needs: 50, wants: 30, savings: 20 },
+        categoryLimits: initialCategoryLimits
+    };
+  }, [data.budgetHistory, currentMonthKey, data.monthlyBudget, data.categories]);
+
+  const updateBudgetConfig = (newConfig: Partial<MonthlyBudgetConfig>) => {
+      const updatedHistory = { ...(data.budgetHistory || {}) };
+      updatedHistory[currentMonthKey] = { ...currentBudgetConfig, ...newConfig };
+      onUpdate({ ...data, budgetHistory: updatedHistory });
+  };
+
 
   // --- Helpers ---
   function filteredTransactions(): Transaction[] {
@@ -110,15 +140,22 @@ export default function Finance({ data, onUpdate }: FinanceProps) {
   const categoryBudgets = useMemo((): CategoryBudget[] => {
     const filtered = filteredTransactions();
     return data.categories
-      .filter(cat => cat.budgetLimit && cat.budgetLimit > 0)
       .map(cat => {
         const spent = filtered
           .filter(t => t.type === 'EXPENSE' && t.category === cat.name)
           .reduce((sum, t) => sum + t.amount, 0);
         
-        // If viewScope is YEAR, multiply monthly budget by 12
-        const budgetLimit = viewScope === 'YEAR' ? (cat.budgetLimit || 0) * 12 : (cat.budgetLimit || 0);
+        // Use month specific limit if available
+        let budgetLimit = currentBudgetConfig.categoryLimits[cat.name] || 0;
         
+        // If viewScope is YEAR, multiply monthly budget by 12
+        if (viewScope === 'YEAR') {
+            budgetLimit = budgetLimit * 12; 
+        }
+        
+        // Filter out if no budget set
+        if (budgetLimit <= 0) return null;
+
         const remaining = budgetLimit - spent;
         const percentageUsed = budgetLimit > 0 ? (spent / budgetLimit) * 100 : 0;
         
@@ -131,68 +168,9 @@ export default function Finance({ data, onUpdate }: FinanceProps) {
           isOverBudget: spent > budgetLimit
         };
       })
+      .filter((cb): cb is CategoryBudget => cb !== null)
       .sort((a, b) => b.percentageUsed - a.percentageUsed);
-  }, [selectedMonth, selectedYear, viewScope, data.transactions, data.categories]);
-
-  // Expense Insights
-  const expenseInsights = useMemo((): ExpenseInsight[] => {
-    // Insights logic primarily compares against previous month. 
-    // If in yearly mode, we could compare against previous year, but for simplicity let's disable granular insights in yearly view or keep monthly logic.
-    // For now, we will return empty for YEAR view to avoid confusion, or implement Yearly comparison later.
-    if (viewScope === 'YEAR') return [];
-
-    const currentMonthTx = filteredTransactions();
-    const prevMonthStart = new Date(selectedYear, selectedMonth - 1, 1);
-    const prevMonthEnd = new Date(selectedYear, selectedMonth, 0, 23, 59, 59);
-    
-    const previousMonthTx = data.transactions.filter(t => {
-      const tDate = new Date(t.date);
-      return t.type === 'EXPENSE' && tDate >= prevMonthStart && tDate <= prevMonthEnd;
-    });
-
-    const insights: ExpenseInsight[] = [];
-    data.categories.forEach(cat => {
-      const currentSpend = currentMonthTx
-        .filter(t => t.type === 'EXPENSE' && t.category === cat.name)
-        .reduce((sum, t) => sum + t.amount, 0);
-      
-      const lastMonthSpend = previousMonthTx
-        .filter(t => t.category === cat.name)
-        .reduce((sum, t) => sum + t.amount, 0);
-
-      if (currentSpend > 0 || lastMonthSpend > 0) {
-        let changePercentage = 0;
-        if (lastMonthSpend > 0) {
-           changePercentage = ((currentSpend - lastMonthSpend) / lastMonthSpend) * 100;
-        } else if (currentSpend > 0) {
-           changePercentage = 100;
-        }
-        
-        let trend: 'UP' | 'DOWN' | 'STABLE' = 'STABLE';
-        if (Math.abs(changePercentage) > 5) {
-          trend = changePercentage > 0 ? 'UP' : 'DOWN';
-        }
-
-        let recommendation;
-        if (trend === 'UP' && changePercentage > 20) {
-          recommendation = `Spending spiked by ${changePercentage.toFixed(0)}%. Check your recent ${cat.name} transactions.`;
-        } else if (trend === 'DOWN' && Math.abs(changePercentage) > 10) {
-          recommendation = `Great job! Spending reduced by ${Math.abs(changePercentage).toFixed(0)}%.`;
-        }
-
-        insights.push({
-          category: cat.name,
-          currentMonthSpend: currentSpend,
-          lastMonthSpend,
-          changePercentage,
-          trend,
-          recommendation
-        });
-      }
-    });
-
-    return insights.sort((a, b) => Math.abs(b.changePercentage) - Math.abs(a.changePercentage));
-  }, [selectedMonth, selectedYear, viewScope, data.transactions, data.categories]);
+  }, [selectedMonth, selectedYear, viewScope, data.transactions, data.categories, currentBudgetConfig]);
 
 
   // --- Actions ---
@@ -201,9 +179,16 @@ export default function Finance({ data, onUpdate }: FinanceProps) {
       const val = parseFloat(amount);
       if (isNaN(val) || val <= 0) return;
 
+      // Construct Date object correctly from input
+      // txDate is YYYY-MM-DD. We want to preserve this date.
+      // We append a time to ensure it lands on the correct day in local time or simple ISO
+      const dateObj = new Date(txDate); 
+      // Add noon time to avoid timezone shift issues to previous day
+      dateObj.setHours(12, 0, 0, 0);
+
       const newTx: Transaction = {
           id: crypto.randomUUID(),
-          date: new Date(txDate).toISOString(),
+          date: dateObj.toISOString(),
           type: txType,
           amount: val,
           category: selectedCategory,
@@ -247,17 +232,6 @@ export default function Finance({ data, onUpdate }: FinanceProps) {
       setAmount('');
       setNote('');
       setTxDate(new Date().toISOString().split('T')[0]);
-  };
-
-  const updateCategoryBudget = (categoryName: string, limit: number) => {
-      const updatedCats = data.categories.map(c => 
-          c.name === categoryName ? { ...c, budgetLimit: limit } : c
-      );
-      onUpdate({ ...data, categories: updatedCats });
-  };
-
-  const updateMonthlyBudget = (val: number) => {
-      onUpdate({ ...data, monthlyBudget: val });
   };
 
   return (
@@ -313,7 +287,7 @@ export default function Finance({ data, onUpdate }: FinanceProps) {
 
       {/* TABS NAVIGATION */}
       <div className="flex p-1 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
-        {['overview', 'transactions', 'analysis', 'budget'].map((tab) => (
+        {['transactions', 'analysis', 'overview', 'budget'].map((tab) => (
           <button 
             key={tab}
             onClick={() => setActiveTab(tab as any)}
@@ -324,79 +298,7 @@ export default function Finance({ data, onUpdate }: FinanceProps) {
         ))}
       </div>
 
-      {/* --- OVERVIEW TAB --- */}
-      {activeTab === 'overview' && (
-        <div className="space-y-6 animate-fade-in">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-emerald-50 p-6 rounded-3xl border border-emerald-100">
-              <h3 className="text-xs font-black text-emerald-600 uppercase tracking-widest mb-1">{viewScope === 'YEAR' ? 'Annual ' : ''}Income</h3>
-              <p className="text-2xl font-black text-emerald-900">₹{financeAnalytics.totalIncome.toLocaleString()}</p>
-            </div>
-            <div className="bg-rose-50 p-6 rounded-3xl border border-rose-100">
-              <h3 className="text-xs font-black text-rose-600 uppercase tracking-widest mb-1">{viewScope === 'YEAR' ? 'Annual ' : ''}Expense</h3>
-              <p className="text-2xl font-black text-rose-900">₹{financeAnalytics.totalExpense.toLocaleString()}</p>
-            </div>
-            <div className="bg-indigo-50 p-6 rounded-3xl border border-indigo-100">
-              <h3 className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-1">Savings</h3>
-              <p className="text-2xl font-black text-indigo-900">₹{financeAnalytics.netSavings.toLocaleString()}</p>
-              <p className="text-xs font-bold text-indigo-400 mt-1">{financeAnalytics.savingsRate.toFixed(1)}% Rate</p>
-            </div>
-            <div className="bg-amber-50 p-6 rounded-3xl border border-amber-100">
-              <h3 className="text-xs font-black text-amber-600 uppercase tracking-widest mb-1">Projected</h3>
-              <p className="text-2xl font-black text-amber-900">₹{financeAnalytics.projectedMonthEnd.toLocaleString()}</p>
-              <p className="text-xs font-bold text-amber-400 mt-1">{viewScope === 'YEAR' ? 'Year' : 'Month'} End Est.</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Top Spending Categories */}
-              <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-                 <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
-                    <TrendingUp className="text-indigo-600" size={20} /> Top Spending Categories
-                 </h3>
-                 <div className="space-y-4">
-                    {financeAnalytics.categoryBreakdown.slice(0, 5).map((cat, idx) => {
-                        const emoji = data.categories.find(c => c.name === cat.category)?.emoji || '✨';
-                        return (
-                          <div key={idx} className="flex items-center gap-4">
-                             <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-xl shadow-inner">
-                                {emoji}
-                             </div>
-                             <div className="flex-1">
-                                <div className="flex justify-between mb-1">
-                                    <span className="font-bold text-slate-700 text-sm">{cat.category}</span>
-                                    <span className="font-bold text-slate-900 text-sm">₹{cat.amount.toLocaleString()}</span>
-                                </div>
-                                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                                    <div className="h-full bg-indigo-500 rounded-full" style={{width: `${cat.percentage}%`}}></div>
-                                </div>
-                             </div>
-                             <span className="text-xs font-bold text-slate-400 w-10 text-right">{cat.percentage.toFixed(0)}%</span>
-                          </div>
-                        );
-                    })}
-                    {financeAnalytics.categoryBreakdown.length === 0 && <p className="text-slate-400 italic text-center">No expense data yet.</p>}
-                 </div>
-              </div>
-
-              {/* Quick Actions */}
-              <div className="bg-slate-900 text-white p-8 rounded-3xl shadow-xl flex flex-col items-start justify-center relative overflow-hidden">
-                  <Sparkles className="absolute top-4 right-4 text-white/10 w-32 h-32 rotate-12" />
-                  <h3 className="text-2xl font-black mb-2 relative z-10">Record Transaction</h3>
-                  <p className="text-slate-400 mb-6 max-w-xs relative z-10">Keep your ledger up to date by adding your daily income and expenses.</p>
-                  <button 
-                    onClick={() => setShowAddModal(true)}
-                    className="bg-white text-slate-900 px-6 py-3 rounded-xl font-bold hover:bg-indigo-50 transition-colors flex items-center gap-2 relative z-10"
-                  >
-                      <Plus size={18} /> Add New Record
-                  </button>
-              </div>
-          </div>
-        </div>
-      )}
-
-      {/* --- TRANSACTIONS TAB --- */}
+      {/* --- TRANSACTIONS TAB (Moved to First) --- */}
       {activeTab === 'transactions' && (
         <div className="space-y-6 animate-fade-in">
            {/* Toolbar */}
@@ -514,7 +416,7 @@ export default function Finance({ data, onUpdate }: FinanceProps) {
                )}
            </div>
 
-           {/* Expense Breakdown Pie Chart (Replaces Trends & Recommendations) */}
+           {/* Expense Breakdown Pie Chart */}
            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
                <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
                    <PieIcon className="text-emerald-500" size={20} /> {viewScope === 'YEAR' ? 'Annual' : 'Monthly'} Expense Breakdown
@@ -572,6 +474,78 @@ export default function Finance({ data, onUpdate }: FinanceProps) {
         </div>
       )}
 
+      {/* --- OVERVIEW TAB --- */}
+      {activeTab === 'overview' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-emerald-50 p-6 rounded-3xl border border-emerald-100">
+              <h3 className="text-xs font-black text-emerald-600 uppercase tracking-widest mb-1">{viewScope === 'YEAR' ? 'Annual ' : ''}Income</h3>
+              <p className="text-2xl font-black text-emerald-900">₹{financeAnalytics.totalIncome.toLocaleString()}</p>
+            </div>
+            <div className="bg-rose-50 p-6 rounded-3xl border border-rose-100">
+              <h3 className="text-xs font-black text-rose-600 uppercase tracking-widest mb-1">{viewScope === 'YEAR' ? 'Annual ' : ''}Expense</h3>
+              <p className="text-2xl font-black text-rose-900">₹{financeAnalytics.totalExpense.toLocaleString()}</p>
+            </div>
+            <div className="bg-indigo-50 p-6 rounded-3xl border border-indigo-100">
+              <h3 className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-1">Savings</h3>
+              <p className="text-2xl font-black text-indigo-900">₹{financeAnalytics.netSavings.toLocaleString()}</p>
+              <p className="text-xs font-bold text-indigo-400 mt-1">{financeAnalytics.savingsRate.toFixed(1)}% Rate</p>
+            </div>
+            <div className="bg-amber-50 p-6 rounded-3xl border border-amber-100">
+              <h3 className="text-xs font-black text-amber-600 uppercase tracking-widest mb-1">Projected</h3>
+              <p className="text-2xl font-black text-amber-900">₹{financeAnalytics.projectedMonthEnd.toLocaleString()}</p>
+              <p className="text-xs font-bold text-amber-400 mt-1">{viewScope === 'YEAR' ? 'Year' : 'Month'} End Est.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Top Spending Categories */}
+              <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+                 <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
+                    <TrendingUp className="text-indigo-600" size={20} /> Top Spending Categories
+                 </h3>
+                 <div className="space-y-4">
+                    {financeAnalytics.categoryBreakdown.slice(0, 5).map((cat, idx) => {
+                        const emoji = data.categories.find(c => c.name === cat.category)?.emoji || '✨';
+                        return (
+                          <div key={idx} className="flex items-center gap-4">
+                             <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-xl shadow-inner">
+                                {emoji}
+                             </div>
+                             <div className="flex-1">
+                                <div className="flex justify-between mb-1">
+                                    <span className="font-bold text-slate-700 text-sm">{cat.category}</span>
+                                    <span className="font-bold text-slate-900 text-sm">₹{cat.amount.toLocaleString()}</span>
+                                </div>
+                                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                                    <div className="h-full bg-indigo-500 rounded-full" style={{width: `${cat.percentage}%`}}></div>
+                                </div>
+                             </div>
+                             <span className="text-xs font-bold text-slate-400 w-10 text-right">{cat.percentage.toFixed(0)}%</span>
+                          </div>
+                        );
+                    })}
+                    {financeAnalytics.categoryBreakdown.length === 0 && <p className="text-slate-400 italic text-center">No expense data yet.</p>}
+                 </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="bg-slate-900 text-white p-8 rounded-3xl shadow-xl flex flex-col items-start justify-center relative overflow-hidden">
+                  <Sparkles className="absolute top-4 right-4 text-white/10 w-32 h-32 rotate-12" />
+                  <h3 className="text-2xl font-black mb-2 relative z-10">Record Transaction</h3>
+                  <p className="text-slate-400 mb-6 max-w-xs relative z-10">Keep your ledger up to date by adding your daily income and expenses.</p>
+                  <button 
+                    onClick={() => setShowAddModal(true)}
+                    className="bg-white text-slate-900 px-6 py-3 rounded-xl font-bold hover:bg-indigo-50 transition-colors flex items-center gap-2 relative z-10"
+                  >
+                      <Plus size={18} /> Add New Record
+                  </button>
+              </div>
+          </div>
+        </div>
+      )}
+
       {/* --- BUDGET TAB --- */}
       {activeTab === 'budget' && (
         <div className="space-y-6 animate-fade-in">
@@ -579,42 +553,72 @@ export default function Finance({ data, onUpdate }: FinanceProps) {
            {/* Monthly Budget Input Card */}
            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
                 <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                    <Wallet className="text-indigo-600" size={20} /> Total Monthly Budget
+                    <Wallet className="text-indigo-600" size={20} /> {new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long' })} Budget
                 </h3>
                 <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
                     <span className="text-3xl font-black text-slate-300">₹</span>
                     <input 
                         type="number"
-                        value={data.monthlyBudget || ''}
-                        onChange={(e) => updateMonthlyBudget(parseFloat(e.target.value) || 0)}
+                        value={currentBudgetConfig.total || ''}
+                        onChange={(e) => updateBudgetConfig({ total: parseFloat(e.target.value) || 0 })}
                         placeholder="0"
                         className="bg-transparent text-3xl font-black text-slate-800 outline-none w-full placeholder:text-slate-300"
                     />
                 </div>
                 <p className="text-xs text-slate-400 mt-3 pl-2">
-                    Enter your total expected income or spending limit for the month. This drives the 50/30/20 rule calculations below.
+                    Enter your total expected income or spending limit for the month. This drives the {currentBudgetConfig.ratios.needs}/{currentBudgetConfig.ratios.wants}/{currentBudgetConfig.ratios.savings} rule calculations below.
                 </p>
            </div>
 
-           {/* 50/30/20 Rule */}
+           {/* Editable 50/30/20 Rule */}
            <div className="bg-slate-900 text-white p-6 rounded-3xl shadow-lg">
-               <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                   <PieIcon size={24} className="text-indigo-400" /> 50/30/20 Rule Guide
-               </h3>
+               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                   <h3 className="text-xl font-bold flex items-center gap-2">
+                       <PieIcon size={24} className="text-indigo-400" /> Budget Rules
+                   </h3>
+                   <div className="flex gap-2 text-xs font-bold text-slate-400 bg-black/20 px-3 py-1.5 rounded-lg">
+                       <span>Total: {currentBudgetConfig.ratios.needs + currentBudgetConfig.ratios.wants + currentBudgetConfig.ratios.savings}%</span>
+                   </div>
+               </div>
+
                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                    <div className="bg-white/10 p-4 rounded-2xl border border-white/10">
-                       <h4 className="text-xs font-bold text-indigo-300 uppercase mb-1">50% Needs</h4>
-                       <p className="text-2xl font-black">₹{(data.monthlyBudget * 0.5).toLocaleString()}</p>
+                       <div className="flex justify-between items-center mb-2">
+                           <h4 className="text-xs font-bold text-indigo-300 uppercase">Needs (%)</h4>
+                           <input 
+                              type="number"
+                              value={currentBudgetConfig.ratios.needs}
+                              onChange={e => updateBudgetConfig({ ratios: { ...currentBudgetConfig.ratios, needs: parseFloat(e.target.value) || 0 } })}
+                              className="w-12 bg-black/20 text-center rounded text-white font-bold text-xs py-1 outline-none"
+                           />
+                       </div>
+                       <p className="text-2xl font-black">₹{(currentBudgetConfig.total * (currentBudgetConfig.ratios.needs / 100)).toLocaleString()}</p>
                        <p className="text-xs text-slate-400 mt-2">Rent, Groceries, Utilities</p>
                    </div>
                    <div className="bg-white/10 p-4 rounded-2xl border border-white/10">
-                       <h4 className="text-xs font-bold text-emerald-300 uppercase mb-1">30% Wants</h4>
-                       <p className="text-2xl font-black">₹{(data.monthlyBudget * 0.3).toLocaleString()}</p>
+                       <div className="flex justify-between items-center mb-2">
+                           <h4 className="text-xs font-bold text-emerald-300 uppercase">Wants (%)</h4>
+                           <input 
+                              type="number"
+                              value={currentBudgetConfig.ratios.wants}
+                              onChange={e => updateBudgetConfig({ ratios: { ...currentBudgetConfig.ratios, wants: parseFloat(e.target.value) || 0 } })}
+                              className="w-12 bg-black/20 text-center rounded text-white font-bold text-xs py-1 outline-none"
+                           />
+                       </div>
+                       <p className="text-2xl font-black">₹{(currentBudgetConfig.total * (currentBudgetConfig.ratios.wants / 100)).toLocaleString()}</p>
                        <p className="text-xs text-slate-400 mt-2">Dining, Hobbies, Shopping</p>
                    </div>
                    <div className="bg-white/10 p-4 rounded-2xl border border-white/10">
-                       <h4 className="text-xs font-bold text-amber-300 uppercase mb-1">20% Savings</h4>
-                       <p className="text-2xl font-black">₹{(data.monthlyBudget * 0.2).toLocaleString()}</p>
+                       <div className="flex justify-between items-center mb-2">
+                            <h4 className="text-xs font-bold text-amber-300 uppercase">Savings (%)</h4>
+                            <input 
+                              type="number"
+                              value={currentBudgetConfig.ratios.savings}
+                              onChange={e => updateBudgetConfig({ ratios: { ...currentBudgetConfig.ratios, savings: parseFloat(e.target.value) || 0 } })}
+                              className="w-12 bg-black/20 text-center rounded text-white font-bold text-xs py-1 outline-none"
+                           />
+                       </div>
+                       <p className="text-2xl font-black">₹{(currentBudgetConfig.total * (currentBudgetConfig.ratios.savings / 100)).toLocaleString()}</p>
                        <p className="text-xs text-slate-400 mt-2">Investments, Debt Repayment</p>
                    </div>
                </div>
@@ -637,8 +641,11 @@ export default function Finance({ data, onUpdate }: FinanceProps) {
                                    <span className="text-slate-400 font-bold">₹</span>
                                    <input 
                                       type="number" 
-                                      value={cat.budgetLimit || ''}
-                                      onChange={(e) => updateCategoryBudget(cat.name, parseFloat(e.target.value))}
+                                      value={currentBudgetConfig.categoryLimits[cat.name] || ''}
+                                      onChange={(e) => {
+                                          const newLimits = { ...currentBudgetConfig.categoryLimits, [cat.name]: parseFloat(e.target.value) || 0 };
+                                          updateBudgetConfig({ categoryLimits: newLimits });
+                                      }}
                                       className="bg-transparent font-black text-slate-800 w-full outline-none"
                                       placeholder="0"
                                    />

@@ -75,10 +75,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             </div>
           </div>
           
-          <h1 className="text-2xl font-black text-white mb-2 tracking-tight">OmniLife</h1>
-          <p className="text-slate-400 text-xs mb-8 leading-relaxed max-w-[260px] mx-auto font-medium">
-             Your Personal Bio-Digital Ecosystem
-          </p>
+          <h1 className="text-2xl font-black text-white mb-8 tracking-tight">Habit Tracker</h1>
 
           {errorMsg && (
              <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl text-left flex gap-3">
@@ -151,7 +148,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         </div>
         
         <p className="text-center text-slate-600 text-[10px] mt-6 font-medium opacity-50 uppercase tracking-widest">
-           v1.2.6 • OmniLife OS
+           v1.2.6 • Habit Tracker
         </p>
       </div>
     </div>
@@ -159,4 +156,3 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 };
 
 export default Auth;
-    

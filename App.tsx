@@ -16,7 +16,7 @@ import AuthComponent from './components/AuthComponent';
 import { auth } from './services/firebase'; // Import auth to get current user data
 import { ViewState, Habit, TrackingData, DailyLogData, UserSettings, FinanceData, User, Note, UserData } from './types';
 import { DEFAULT_HABITS } from './constants';
-import { Battery, BatteryCharging, Heart, Shield, Menu, AlertTriangle, Cloud, CloudOff } from 'lucide-react';
+import { Menu, AlertTriangle, Cloud, CloudOff } from 'lucide-react';
 import { useCloudStorage } from './hooks/useCloudStorage';
 
 interface ErrorBoundaryProps {
@@ -155,11 +155,13 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ user, onLogout }) =
             ],
             monthlyBudget: typeof parsed.monthlyBudget === 'number' ? parsed.monthlyBudget : 10000,
             walletBalance: typeof parsed.walletBalance === 'number' ? parsed.walletBalance : 50000,
+            budgetHistory: parsed.budgetHistory || {}
         };
       } catch (e) {
         return { 
             transactions: [], bills: [], debts: [], assets: [],
-            categories: [], monthlyBudget: 10000, walletBalance: 50000
+            categories: [], monthlyBudget: 10000, walletBalance: 50000,
+            budgetHistory: {}
         };
       }
   });
@@ -296,17 +298,6 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ user, onLogout }) =
     }
   };
 
-  const calculateEnergy = () => {
-    try {
-        const today = new Date().toISOString().split('T')[0];
-        const log = dailyLogs[today];
-        if (!log) return 70;
-        return Math.min(100, Math.round((log.sleepHours / 8) * 100));
-    } catch (e) { return 70; }
-  };
-
-  const energyLevel = calculateEnergy();
-
   const renderContent = () => {
     switch (currentView) {
       case ViewState.DASHBOARD:
@@ -383,38 +374,6 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ user, onLogout }) =
              </div>
 
              <div className="flex items-center gap-4 md:gap-6 overflow-x-auto pb-1 md:pb-0 w-full md:w-auto hide-scrollbar">
-                 <div className="flex items-center gap-2 shrink-0">
-                     <div className="text-right">
-                         <p className="text-[10px] font-bold text-slate-400 uppercase">Energy</p>
-                         <p className={`text-sm font-bold ${energyLevel > 80 ? 'text-emerald-500' : energyLevel > 50 ? 'text-amber-500' : 'text-rose-500'}`}>{energyLevel}%</p>
-                     </div>
-                     {energyLevel > 80 ? <BatteryCharging size={24} className="text-emerald-500" /> : <Battery size={24} className={energyLevel < 40 ? "text-rose-500" : "text-amber-500"} />}
-                 </div>
-
-                 {settings.mode === 'HERO' && settings.heroStats && (
-                     <div className="flex items-center gap-4 bg-slate-50 px-4 py-2 rounded-lg border border-slate-100 shrink-0">
-                         <div className="flex items-center gap-2">
-                             <Heart size={18} className="text-rose-500 fill-rose-500" />
-                             <div className="w-16 md:w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
-                                 <div className="h-full bg-rose-500" style={{ width: `${(settings.heroStats.hp / settings.heroStats.maxHp) * 100}%` }}></div>
-                             </div>
-                         </div>
-                         <div className="flex items-center gap-2">
-                             <div className="relative">
-                                 <Shield size={20} className="text-indigo-600" />
-                                 <span className="absolute -bottom-1 -right-1 bg-amber-400 text-amber-900 text-[8px] font-bold w-3 h-3 flex items-center justify-center rounded-full">
-                                     {settings.heroStats.level}
-                                 </span>
-                             </div>
-                             <div className="flex flex-col w-16 md:w-24">
-                                 <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                                     <div className="h-full bg-amber-400" style={{ width: `${(settings.heroStats.xp / settings.heroStats.nextLevelXp) * 100}%` }}></div>
-                                 </div>
-                             </div>
-                         </div>
-                     </div>
-                 )}
-
                  <div className="hidden md:flex w-10 h-10 bg-slate-900 rounded-full items-center justify-center text-white font-bold shadow-lg border-2 border-slate-100 shrink-0 uppercase">
                     {user.username.substring(0, 2).toUpperCase()}
                  </div>
