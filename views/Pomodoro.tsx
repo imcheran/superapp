@@ -10,7 +10,7 @@ interface PomodoroProps {
 
 const Pomodoro: React.FC<PomodoroProps> = ({ settings, onSessionComplete }) => {
   const [mode, setMode] = useState<'WORK' | 'BREAK' | 'LONG_BREAK'>('WORK');
-  const [timeLeft, setTimeLeft] = useState(25 * 60);
+  const [timeLeft, setTimeLeft] = useState((settings?.workDuration || 25) * 60);
   const [isActive, setIsActive] = useState(false);
   const [sessionCount, setSessionCount] = useState(0);
 
@@ -38,14 +38,19 @@ const Pomodoro: React.FC<PomodoroProps> = ({ settings, onSessionComplete }) => {
       setSessionCount(newCount);
       onSessionComplete({
         id: crypto.randomUUID(),
+        userId: 'current_user',
         startTime: new Date(Date.now() - WORK_TIME * 1000).toISOString(),
         endTime: new Date().toISOString(),
-        duration: settings?.workDuration || 25,
+        plannedDuration: settings?.workDuration || 25,
+        actualDuration: settings?.workDuration || 25,
         isCompleted: true,
-        label: 'Focus Session'
+        isBreak: false,
+        distractions: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       });
       
-      if (newCount % 4 === 0) {
+      if (newCount % (settings?.sessionsBeforeLongBreak || 4) === 0) {
         setMode('LONG_BREAK');
         setTimeLeft(LONG_BREAK_TIME);
       } else {
