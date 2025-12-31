@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { ViewState } from '../types';
-import { LayoutDashboard, CheckSquare, Brain, Settings, IndianRupee, LogOut, X, Ban } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Brain, Settings, IndianRupee, LogOut, X, Ban, ListTodo, Timer, BookOpen, Calendar, Inbox, CheckCircle2, Star } from 'lucide-react';
 
 interface SidebarProps {
   currentView: ViewState;
@@ -13,12 +13,34 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, isOpen, setIsOpen, username, onLogout }) => {
-  const menuItems = [
-    { view: ViewState.DASHBOARD, label: 'Dashboard', icon: LayoutDashboard },
-    { view: ViewState.TRACKER, label: 'Habit Tracker', icon: CheckSquare },
-    { view: ViewState.QUIT_HABITS, label: 'Quit Habits', icon: Ban },
-    { view: ViewState.FINANCE, label: 'Finance', icon: IndianRupee },
-    { view: ViewState.SETTINGS, label: 'Settings', icon: Settings },
+  const menuGroups = [
+    {
+        title: "Tasks",
+        items: [
+            { view: ViewState.INBOX, label: 'Inbox', icon: Inbox },
+            { view: ViewState.TODAY, label: 'Today', icon: Star },
+            { view: ViewState.WEEK, label: 'Next 7 Days', icon: Calendar },
+            { view: ViewState.CALENDAR, label: 'Calendar', icon: Calendar },
+            { view: ViewState.COMPLETED, label: 'Completed', icon: CheckCircle2 },
+        ]
+    },
+    {
+        title: "Focus & Habits",
+        items: [
+            { view: ViewState.POMODORO, label: 'Focus Timer', icon: Timer },
+            { view: ViewState.TRACKER, label: 'Habit Tracker', icon: CheckSquare },
+            { view: ViewState.QUIT_HABITS, label: 'Quit Habits', icon: Ban },
+            { view: ViewState.DASHBOARD, label: 'Dashboard', icon: LayoutDashboard },
+        ]
+    },
+    {
+        title: "Life OS",
+        items: [
+            { view: ViewState.JOURNAL, label: 'Journal & Notes', icon: BookOpen },
+            { view: ViewState.FINANCE, label: 'Finance', icon: IndianRupee },
+            { view: ViewState.SETTINGS, label: 'Settings', icon: Settings },
+        ]
+    }
   ];
 
   return (
@@ -40,31 +62,38 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, isOpen, setIsOp
         <div className="p-6 flex items-center justify-between">
           <div className="flex items-center gap-2 font-bold text-xl">
             <Brain className="text-indigo-400" />
-            <span>Habit Tracker</span>
+            <span>OmniLife</span>
           </div>
           <button onClick={() => setIsOpen(false)} className="md:hidden text-slate-400 hover:text-white">
             <X size={24} />
           </button>
         </div>
 
-        <nav className="flex-1 px-4 space-y-2 overflow-y-auto custom-scrollbar">
-          {menuItems.map((item) => (
-            <button
-              key={item.view}
-              onClick={() => {
-                setView(item.view);
-                setIsOpen(false);
-              }}
-              className={`
-                w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
-                ${currentView === item.view 
-                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/50' 
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-white'}
-              `}
-            >
-              <item.icon size={20} />
-              <span className="font-medium">{item.label}</span>
-            </button>
+        <nav className="flex-1 px-4 space-y-6 overflow-y-auto custom-scrollbar">
+          {menuGroups.map((group, idx) => (
+             <div key={idx}>
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-4">{group.title}</h3>
+                <div className="space-y-1">
+                    {group.items.map((item) => (
+                        <button
+                        key={item.view}
+                        onClick={() => {
+                            setView(item.view);
+                            setIsOpen(false);
+                        }}
+                        className={`
+                            w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm
+                            ${currentView === item.view 
+                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/50 font-bold' 
+                            : 'text-slate-400 hover:bg-slate-800 hover:text-white'}
+                        `}
+                        >
+                        <item.icon size={18} />
+                        <span>{item.label}</span>
+                        </button>
+                    ))}
+                </div>
+             </div>
           ))}
         </nav>
 
@@ -77,7 +106,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, isOpen, setIsOp
             <span className="font-medium">Sign Out</span>
           </button>
           <div className="mt-4 px-4 text-xs text-slate-600 text-center">
-             v1.2.5 • {username}
+             v2.1.0 • {username}
           </div>
         </div>
       </aside>

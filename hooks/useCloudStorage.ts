@@ -27,7 +27,7 @@ export function useCloudStorage<T = unknown>() {
           data,
           lastUpdated: serverTimestamp(),
         },
-        { merge: true } // merge to avoid overwriting unrelated fields
+        { merge: true }
       );
       console.log('✅ Data saved to cloud!');
       return true;

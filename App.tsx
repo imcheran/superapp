@@ -11,10 +11,13 @@ import Settings from './views/Settings';
 import Finance from './views/Finance';
 import QuitHabits from './views/QuitHabits';
 import Notes from './views/Notes';
-// Import the new AuthComponent
+// Import New Views
+import Tasks from './views/Tasks';
+import Pomodoro from './views/Pomodoro';
+
 import AuthComponent from './components/AuthComponent';
-import { auth } from './services/firebase'; // Import auth to get current user data
-import { ViewState, Habit, TrackingData, DailyLogData, UserSettings, FinanceData, User, Note, UserData } from './types';
+import { auth } from './services/firebase'; 
+import { ViewState, Habit, TrackingData, DailyLogData, UserSettings, FinanceData, User, Note, UserData, Task, TaskList, PomodoroSession, PomodoroSettings } from './types';
 import { DEFAULT_HABITS } from './constants';
 import { Menu, AlertTriangle, Cloud, CloudOff } from 'lucide-react';
 import { useCloudStorage } from './hooks/useCloudStorage';
@@ -96,7 +99,7 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ user, onLogout }) =
   const [isCloudSynced, setIsCloudSynced] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   
-  // Storage Keys with Username Prefix
+  // Storage Keys
   const KEYS = {
       HABITS: `user_${user.username}_habits`,
       DATA: `user_${user.username}_data`,
@@ -104,9 +107,13 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ user, onLogout }) =
       FINANCE: `user_${user.username}_finance`,
       SETTINGS: `user_${user.username}_settings`,
       NOTES: `user_${user.username}_notes`,
+      TASKS: `user_${user.username}_tasks`,
+      TASK_LISTS: `user_${user.username}_task_lists`,
+      POMODORO_SESSIONS: `user_${user.username}_pomodoro_sessions`,
+      POMODORO_SETTINGS: `user_${user.username}_pomodoro_settings`,
   };
 
-  // --- Strict Data Initialization (Prevents "White Screen" from corrupted JSON) ---
+  // --- Strict Data Initialization ---
 
   const [habits, setHabits] = useState<Habit[]>(() => {
     try {
@@ -114,7 +121,6 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ user, onLogout }) =
       const parsed = saved ? JSON.parse(saved) : DEFAULT_HABITS;
       return Array.isArray(parsed) ? parsed : DEFAULT_HABITS;
     } catch (e) {
-      console.warn("Failed to load habits, resetting to default", e);
       return DEFAULT_HABITS;
     }
   });
@@ -174,6 +180,48 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ user, onLogout }) =
       } catch (e) { return []; }
   });
 
+  const [tasks, setTasks] = useState<Task[]>(() => {
+    try {
+        const saved = localStorage.getItem(KEYS.TASKS);
+        const parsed = saved ? JSON.parse(saved) : [];
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (e) { return []; }
+  });
+
+  const [taskLists, setTaskLists] = useState<TaskList[]>(() => {
+    try {
+        const saved = localStorage.getItem(KEYS.TASK_LISTS);
+        const parsed = saved ? JSON.parse(saved) : [];
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (e) { return []; }
+  });
+
+  const [pomodoroSessions, setPomodoroSessions] = useState<PomodoroSession[]>(() => {
+    try {
+        const saved = localStorage.getItem(KEYS.POMODORO_SESSIONS);
+        const parsed = saved ? JSON.parse(saved) : [];
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (e) { return []; }
+  });
+
+  const [pomodoroSettings, setPomodoroSettings] = useState<PomodoroSettings>(() => {
+    try {
+        const saved = localStorage.getItem(KEYS.POMODORO_SETTINGS);
+        return saved ? JSON.parse(saved) : { 
+          workDuration: 25, 
+          breakDuration: 5, 
+          longBreakDuration: 15,
+          sessionsBeforeLongBreak: 4,
+          autoStartNextSession: false,
+          soundEnabled: true,
+          soundVolume: 0.5,
+          quietHoursEnabled: false,
+          quietHoursStart: "22:00",
+          quietHoursEnd: "07:00"
+        };
+    } catch (e) { return { workDuration: 25, breakDuration: 5, longBreakDuration: 15, sessionsBeforeLongBreak: 4, autoStartNextSession: false, soundEnabled: true, soundVolume: 0.5, quietHoursEnabled: false, quietHoursStart: "22:00", quietHoursEnd: "07:00" }; }
+  });
+
   const [settings, setSettings] = useState<UserSettings>(() => {
     try {
       const saved = localStorage.getItem(KEYS.SETTINGS);
@@ -204,7 +252,6 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ user, onLogout }) =
 
   // --- Cloud Synchronization ---
   
-  // 1. Load from Cloud on Mount
   useEffect(() => {
     const fetchCloudData = async () => {
       setIsSyncing(true);
@@ -216,14 +263,17 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ user, onLogout }) =
         if (cloudData.financeData) setFinanceData(cloudData.financeData);
         if (cloudData.settings) setSettings(cloudData.settings);
         if (cloudData.notes) setNotes(cloudData.notes);
+        if (cloudData.tasks) setTasks(cloudData.tasks);
+        if (cloudData.taskLists) setTaskLists(cloudData.taskLists);
+        if (cloudData.pomodoroSessions) setPomodoroSessions(cloudData.pomodoroSessions);
+        if (cloudData.pomodoroSettings) setPomodoroSettings(cloudData.pomodoroSettings);
       }
-      setIsCloudSynced(true); // Enable auto-save only after initial load attempt
+      setIsCloudSynced(true); 
       setIsSyncing(false);
     };
     fetchCloudData();
   }, []);
 
-  // 2. Auto-Save to Cloud on Change
   useEffect(() => {
     if (!isCloudSynced) return;
 
@@ -235,14 +285,18 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ user, onLogout }) =
             dailyLogs,
             financeData,
             settings,
-            notes
+            notes,
+            tasks,
+            taskLists,
+            pomodoroSessions,
+            pomodoroSettings
         });
         setIsSyncing(false);
     };
 
-    const timer = setTimeout(saveData, 3000); // 3s debounce
+    const timer = setTimeout(saveData, 3000);
     return () => clearTimeout(timer);
-  }, [habits, trackingData, dailyLogs, financeData, settings, notes, isCloudSynced]);
+  }, [habits, trackingData, dailyLogs, financeData, settings, notes, tasks, taskLists, pomodoroSessions, pomodoroSettings, isCloudSynced]);
 
 
   // Persistence Effects (Local Storage)
@@ -252,50 +306,20 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ user, onLogout }) =
   useEffect(() => localStorage.setItem(KEYS.FINANCE, JSON.stringify(financeData)), [financeData, KEYS.FINANCE]);
   useEffect(() => localStorage.setItem(KEYS.SETTINGS, JSON.stringify(settings)), [settings, KEYS.SETTINGS]);
   useEffect(() => localStorage.setItem(KEYS.NOTES, JSON.stringify(notes)), [notes, KEYS.NOTES]);
-
-  const handleFactoryReset = () => {
-      if (confirm("Are you sure you want to delete all data for this account? This action cannot be undone.")) {
-          localStorage.removeItem(KEYS.HABITS);
-          localStorage.removeItem(KEYS.DATA);
-          localStorage.removeItem(KEYS.LOGS);
-          localStorage.removeItem(KEYS.FINANCE);
-          localStorage.removeItem(KEYS.SETTINGS);
-          localStorage.removeItem(KEYS.NOTES);
-          window.location.reload();
-      }
-  };
+  useEffect(() => localStorage.setItem(KEYS.TASKS, JSON.stringify(tasks)), [tasks, KEYS.TASKS]);
+  useEffect(() => localStorage.setItem(KEYS.TASK_LISTS, JSON.stringify(taskLists)), [taskLists, KEYS.TASK_LISTS]);
+  useEffect(() => localStorage.setItem(KEYS.POMODORO_SESSIONS, JSON.stringify(pomodoroSessions)), [pomodoroSessions, KEYS.POMODORO_SESSIONS]);
+  useEffect(() => localStorage.setItem(KEYS.POMODORO_SETTINGS, JSON.stringify(pomodoroSettings)), [pomodoroSettings, KEYS.POMODORO_SETTINGS]);
 
   const toggleHabit = (habitId: string, date: string) => {
     const currentDayData = trackingData[date] || [];
     const isCompleted = currentDayData.includes(habitId);
-    const earnedXp = isCompleted ? -15 : 15; 
     
     setTrackingData(prev => {
       const dayList = prev[date] || [];
       const newData = isCompleted ? dayList.filter(id => id !== habitId) : [...dayList, habitId];
       return { ...prev, [date]: newData };
     });
-
-    if (settings.mode === 'HERO') {
-        setSettings(prev => {
-            if (!prev.heroStats) return prev;
-            let newXp = prev.heroStats.xp + earnedXp;
-            let newLevel = prev.heroStats.level;
-            let newNext = prev.heroStats.nextLevelXp;
-
-            if (newXp >= newNext) {
-                newXp = newXp - newNext;
-                newLevel += 1;
-                newNext = Math.round(newNext * 1.2);
-            }
-            if (newXp < 0) newXp = 0;
-
-            return {
-                ...prev,
-                heroStats: { ...prev.heroStats, xp: newXp, level: newLevel, nextLevelXp: newNext }
-            };
-        });
-    }
   };
 
   const renderContent = () => {
@@ -322,9 +346,24 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ user, onLogout }) =
             </div>
         );
       case ViewState.SETTINGS:
-        return <Settings habits={habits} onUpdateHabits={setHabits} settings={settings} onUpdateSettings={setSettings} onReset={handleFactoryReset} />;
+        return <Settings habits={habits} onUpdateHabits={setHabits} settings={settings} onUpdateSettings={setSettings} onReset={() => {localStorage.clear(); window.location.reload();}} />;
       case ViewState.AI_COACH:
         return <AIAdvisor habits={habits} data={trackingData} dailyLogs={dailyLogs} />;
+      
+      // --- NEW VIEWS ---
+      case ViewState.INBOX:
+      case ViewState.TODAY:
+      case ViewState.WEEK:
+      case ViewState.UPCOMING:
+      case ViewState.COMPLETED:
+        return <Tasks tasks={tasks} onUpdateTasks={setTasks} />; // Reuse Tasks view for now with filters to be implemented inside
+      
+      case ViewState.CALENDAR:
+        return <div className="text-center p-10 text-slate-400">Calendar View (Implementation Pending)</div>;
+
+      case ViewState.POMODORO:
+        return <Pomodoro settings={pomodoroSettings} onSessionComplete={(session) => setPomodoroSessions([...pomodoroSessions, session])} />;
+        
       default:
         return <Dashboard habits={habits} data={trackingData} />;
     }
@@ -342,7 +381,7 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ user, onLogout }) =
       />
       
       <main className="flex-1 overflow-y-auto overflow-x-hidden w-full">
-        {/* OmniLife HUD Header */}
+        {/* Header */}
         <header className="px-4 md:px-8 py-4 bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
              <div className="flex items-center justify-between w-full md:w-auto">
                  <div className="flex items-center gap-3">
@@ -352,11 +391,6 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ user, onLogout }) =
                      <h2 className="text-xl font-bold text-slate-800 capitalize tracking-tight truncate">
                         {currentView.toLowerCase().replace('_', ' ')}
                      </h2>
-                     {settings.mode === 'HERO' && (
-                         <span className="hidden sm:inline px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] font-bold uppercase rounded-md tracking-wider whitespace-nowrap">Hero Mode</span>
-                     )}
-                     
-                     {/* Cloud Sync Status */}
                      {isCloudSynced ? (
                          <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-100 text-slate-400">
                             <Cloud size={14} className={isSyncing ? "text-indigo-500 animate-pulse" : "text-emerald-500"} />
@@ -372,12 +406,6 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ user, onLogout }) =
                     {user.username.substring(0, 2).toUpperCase()}
                  </div>
              </div>
-
-             <div className="flex items-center gap-4 md:gap-6 overflow-x-auto pb-1 md:pb-0 w-full md:w-auto hide-scrollbar">
-                 <div className="hidden md:flex w-10 h-10 bg-slate-900 rounded-full items-center justify-center text-white font-bold shadow-lg border-2 border-slate-100 shrink-0 uppercase">
-                    {user.username.substring(0, 2).toUpperCase()}
-                 </div>
-             </div>
         </header>
 
         <div className="p-4 md:p-8 pb-20 max-w-7xl mx-auto">
@@ -388,12 +416,9 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({ user, onLogout }) =
   );
 };
 
-// --- App Bridge to Connect AuthComponent to AuthenticatedApp ---
-// This component extracts the Firebase User and converts it to the App's User type
+// --- App Bridge ---
 const AppBridge: React.FC = () => {
-    // We can safely access auth.currentUser here because AuthComponent only renders children when authenticated
     const firebaseUser = auth.currentUser;
-    
     const appUser: User = {
         username: firebaseUser?.displayName || firebaseUser?.email?.split('@')[0] || 'Traveler',
         createdAt: new Date().toISOString()
@@ -408,7 +433,7 @@ const AppBridge: React.FC = () => {
     );
 }
 
-// --- Main App Wrapper (Auth Handling) ---
+// --- Main App ---
 const App: React.FC = () => {
     return (
         <ErrorBoundary>

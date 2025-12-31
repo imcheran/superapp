@@ -1,9 +1,9 @@
 
 import React, { useState } from 'react';
 import { User } from '../types';
-import { ArrowRight, Brain, Sparkles, ShieldCheck, Globe, AlertTriangle } from 'lucide-react';
-import { auth, googleProvider } from '../services/firebase';
+import { ArrowRight, Brain, ShieldCheck, Mail } from 'lucide-react';
 import { signInWithPopup } from 'firebase/auth';
+import { auth, googleProvider } from '../services/firebase';
 
 interface AuthProps {
   onLogin: (user: User) => void;
@@ -12,7 +12,25 @@ interface AuthProps {
 const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      // Map Firebase user to App User type
+      onLogin({
+        username: user.displayName || user.email?.split('@')[0] || 'Explorer',
+        createdAt: new Date().toISOString(),
+        // You might want to extend the User type in types.ts to store email/uid if needed later
+      });
+    } catch (error) {
+      console.error("Login failed", error);
+      alert("Google login failed. Please check your connection or try the Guest option.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,36 +39,6 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
         username: username.trim(),
         createdAt: new Date().toISOString()
       });
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    setErrorMsg(null);
-    try {
-        const result = await signInWithPopup(auth, googleProvider);
-        const user = result.user;
-        if (user) {
-            onLogin({
-                username: user.displayName || user.email?.split('@')[0] || 'Traveler',
-                createdAt: new Date().toISOString()
-            });
-        }
-    } catch (error: any) {
-        console.error("Google Auth Error:", error);
-        
-        if (error.code === 'auth/unauthorized-domain') {
-            const currentDomain = window.location.hostname;
-            setErrorMsg(`Domain Authorization Required. Please add "${currentDomain}" to your Firebase Console > Authentication > Settings > Authorized Domains.`);
-        } else if (error.code === 'auth/invalid-api-key' || error.code === 'auth/configuration-not-found') {
-             setErrorMsg("Firebase Setup Required: Please check your API keys in services/firebase.ts");
-        } else if (error.code === 'auth/popup-closed-by-user') {
-             // User closed popup, no error needed
-        } else {
-             setErrorMsg(`Sign in failed: ${error.message}`);
-        }
-    } finally {
-        setLoading(false);
     }
   };
 
@@ -75,80 +63,85 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             </div>
           </div>
           
-          <h1 className="text-2xl font-black text-white mb-8 tracking-tight">Habit Tracker</h1>
+          <h1 className="text-2xl font-black text-white mb-2 tracking-tight">OmniLife</h1>
+          <p className="text-slate-400 text-sm mb-8">Your external brain for habits & focus.</p>
 
-          {errorMsg && (
-             <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl text-left flex gap-3">
-                 <AlertTriangle className="text-rose-500 shrink-0" size={20} />
-                 <div className="space-y-1">
-                     <p className="text-rose-200 text-xs font-bold uppercase">Authentication Error</p>
-                     <p className="text-rose-100 text-xs leading-relaxed">{errorMsg}</p>
-                 </div>
-             </div>
-          )}
+          <div className="space-y-4">
+            {/* Google Login Button */}
+            <button
+              onClick={handleGoogleLogin}
+              disabled={loading}
+              className="w-full bg-white hover:bg-slate-50 text-slate-900 py-3.5 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-3 shadow-lg active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <span className="w-5 h-5 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin"></span>
+              ) : (
+                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <path
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    fill="#4285F4"
+                  />
+                  <path
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    fill="#34A853"
+                  />
+                  <path
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.26z"
+                    fill="#FBBC05"
+                  />
+                  <path
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                    fill="#EA4335"
+                  />
+                </svg>
+              )}
+              Continue with Google
+            </button>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2 text-left">
-                <label htmlFor="username" className="text-xs font-bold text-slate-500 uppercase ml-1">Enter your name here</label>
-                <div className="relative group">
-                    <div className="absolute inset-0 bg-indigo-500/20 rounded-xl blur-sm opacity-0 group-focus-within:opacity-100 transition-opacity"></div>
-                    <input
-                        id="username"
-                        type="text"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        className="relative w-full px-5 py-3.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-600 focus:border-indigo-500/50 focus:bg-slate-800 focus:outline-none transition-all font-bold text-base"
-                        placeholder="Enter your name"
-                        autoFocus
-                    />
+            <div className="relative py-2">
+                <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-white/10"></div>
+                </div>
+                <div className="relative flex justify-center text-xs">
+                    <span className="bg-[#161e31] px-2 text-slate-500 font-bold uppercase">Or continue as guest</span>
                 </div>
             </div>
-            
-            <button
-              type="submit"
-              disabled={!username.trim()}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3.5 rounded-xl font-black text-base transition-all flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-900/20 active:scale-[0.98] mt-2"
-            >
-              Enter System
-              <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform text-indigo-200" />
-            </button>
-          </form>
 
-          <div className="flex items-center gap-4 my-6">
-            <div className="h-px bg-white/10 flex-1"></div>
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">OR</span>
-            <div className="h-px bg-white/10 flex-1"></div>
+            {/* Manual Login Form */}
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div className="relative group">
+                  <div className="absolute inset-0 bg-indigo-500/20 rounded-xl blur-sm opacity-0 group-focus-within:opacity-100 transition-opacity"></div>
+                  <input
+                      id="username"
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="relative w-full px-5 py-3.5 bg-slate-800/60 border border-white/10 rounded-xl text-white placeholder-slate-600 focus:border-indigo-500/50 focus:bg-slate-800 focus:outline-none transition-all font-bold text-base"
+                      placeholder="Enter a display name..."
+                  />
+              </div>
+              
+              <button
+                type="submit"
+                disabled={!username.trim()}
+                className="w-full bg-slate-800 hover:bg-slate-700 text-white py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed border border-white/5 active:scale-[0.98]"
+              >
+                Enter System Locally
+                <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform text-slate-400" />
+              </button>
+            </form>
           </div>
-
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            disabled={loading}
-            className="w-full bg-white text-slate-900 hover:bg-slate-50 py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-3 shadow-lg active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
-          >
-            {loading ? (
-                <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
-            ) : (
-                <svg width="18" height="18" viewBox="0 0 18 18">
-                  <path d="M9 3.48c1.69 0 2.83.73 3.48 1.34l2.54-2.48C13.46.89 11.43 0 9 0 5.48 0 2.44 2.02.96 4.96l2.91 2.26C4.6 5.05 6.62 3.48 9 3.48z" fill="#EA4335"/>
-                  <path d="M17.64 9.2c0-.74-.06-1.28-.19-1.84H9v3.34h4.96c-.1.83-.64 2.08-1.84 2.92l2.84 2.2c1.7-1.57 2.68-3.88 2.68-6.62z" fill="#4285F4"/>
-                  <path d="M3.88 10.78A5.54 5.54 0 0 1 3.58 9c0-.62.11-1.22.29-1.78L.96 4.96A9.008 9.008 0 0 0 0 9c0 1.45.35 2.82.96 4.04l2.92-2.26z" fill="#FBBC05"/>
-                  <path d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.84-2.2c-.76.53-1.78.9-3.12.9-2.38 0-4.4-1.57-5.12-3.74L.97 13.04C2.45 15.98 5.48 18 9 18z" fill="#34A853"/>
-                </svg>
-            )}
-            {loading ? 'Connecting...' : 'Continue with Google'}
-          </button>
           
           <div className="mt-8 pt-6 border-t border-white/5 flex justify-center">
              <div className="flex items-center gap-2 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
                 <ShieldCheck size={12} className="text-emerald-500" /> 
-                <span>Secure Authentication</span>
+                <span>Secure Cloud Sync & Local Storage</span>
              </div>
           </div>
         </div>
         
         <p className="text-center text-slate-600 text-[10px] mt-6 font-medium opacity-50 uppercase tracking-widest">
-           v1.2.6 • Habit Tracker
+           v1.2.8 • OmniLife
         </p>
       </div>
     </div>
