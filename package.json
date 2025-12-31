@@ -28,7 +28,6 @@
     "@vitejs/plugin-react": "^4.0.3",
     "typescript": "^5.0.2",
     "vite": "^4.4.5",
-    "@types/chrono-node": "^2.7.0",
     "@types/uuid": "^9.0.0"
   }
 }
